@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import rospy
-import random
+import sys, select, os
+if os.name == 'nt':
+  import msvcrt
+else:
+  import tty, termios
+
 
 from geometry_msgs.msg import Twist
 
@@ -11,27 +16,61 @@ from geometry_msgs.msg import Twist
 #import cv2
 
 
-class RandomBot():
+msg = """
+
+Control TurtleBot3 using keyboard
+---------------------------
+Moving around:
+        k
+   h         l
+        j
+
+CTRL-C to quit
+Please input key
+"""
+
+class MyTeleop():
     def __init__(self, bot_name):
         # bot name 
         self.name = bot_name
         # velocity publisher
         self.vel_pub = rospy.Publisher('/red_bot/cmd_vel', Twist,queue_size=1)
 
+    def getKey(self):
+        if os.name == 'nt':
+            return msvcrt.getch()
+
+        tty.setraw(sys.stdin.fileno())
+        rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+        if rlist:
+            key = sys.stdin.read(1)
+        else:
+            key = ''
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+        return key
+
+
     def calcTwist(self):
-        value = random.randint(1,1000)
-        if value < 250:
-            x = 0.2
+
+        keyValue = ''
+        while(1):
+            if not keyValue:
+                keyValue = self.getKey()
+            else:
+                break
+
+        if keyValue == 'k':
+            x = 0.1
             th = 0
-        elif value < 500:
-            x = -0.2
+        elif keyValue == 'j':
+            x = -0.1
             th = 0
-        elif value < 750:
+        elif keyValue == 'h':
             x = 0
-            th = 1
-        elif value < 1000:
+            th = 0.5
+        elif keyValue == 'l':
             x = 0
-            th = -1
+            th = -0.5
         else:
             x = 0
             th = 0
@@ -40,8 +79,11 @@ class RandomBot():
         twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = th
         return twist
 
+        if os.name != 'nt':
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+
     def strategy(self):
-        r = rospy.Rate(1) # change speed 1fps
+        r = rospy.Rate(0.5) # change speed 1fps
 
         target_speed = 0
         target_turn = 0
@@ -50,14 +92,19 @@ class RandomBot():
 
         while not rospy.is_shutdown():
             twist = self.calcTwist()
-            print(twist)
+            #print(twist)
             self.vel_pub.publish(twist)
-
             r.sleep()
+            twist = Twist()
+            self.vel_pub.publish(twist)
 
 
 if __name__ == '__main__':
-    rospy.init_node('random_run')
-    bot = RandomBot('Random')
+    if os.name != 'nt':
+        settings = termios.tcgetattr(sys.stdin)
+
+    rospy.init_node('myTeleop')
+    bot = MyTeleop('myTeleop')
+    print msg
     bot.strategy()
 
