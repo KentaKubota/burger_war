@@ -4,7 +4,7 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "my_teleop");
+  ros::init(argc, argv, "myTeleop");
   // initでROSを初期化し、my_teleopという名前をノードにつける                        
   // 同じ名前のノードが複数あるとだめなので、ユニークな名前をつける                 
 
